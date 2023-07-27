@@ -2,7 +2,6 @@
 This file has the information about the BDD 100K images. And a method to extract a specific list required image names.
 """
 import json
-from tqdm import tqdm
 from pathlib import Path
 
 train_labels_path = "C:/Others/BDD/bdd100k_labels_release/bdd100k\labels/bdd100k_labels_images_train.json"
@@ -31,10 +30,7 @@ def get_list_of_images(weather_type: str, timeofday: str, json_labels_file_path:
     imgs_list = []
     with open(json_labels_file_path, "r") as labels_file_path:
         labels = json.load(labels_file_path)
-        for label in tqdm(labels):
+        for label in labels:
             if label["attributes"]["weather"] == weather_type and label["attributes"]["timeofday"] == timeofday:
                 imgs_list.append(label["name"])
     return imgs_list
-
-
-print(len(get_list_of_images(weather_type="clear", timeofday="night", json_labels_file_path=Path(val_labels_path))))
