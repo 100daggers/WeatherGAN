@@ -88,19 +88,19 @@ def train_fn(
             cycle_night_loss = l1(night, cycle_night)
 
             # identity loss (remove these for efficiency if you set lambda_identity=0)
-            identity_day = gen_day(day)
-            identity_night = gen_night(night)
-            identity_day_loss = l1(day, identity_day)
-            identity_night_loss = l1(night, identity_night)
+            # identity_day = gen_day(day)
+            # identity_night = gen_night(night)
+            # identity_day_loss = l1(day, identity_day)
+            # identity_night_loss = l1(night, identity_night)
 
-            # add all togethor
+            # add all together
             G_loss = (
                     loss_gen_day
                     + loss_gen_night
                     + cycle_day_loss * config.LAMBDA_CYCLE
                     + cycle_night_loss * config.LAMBDA_CYCLE
-                    + identity_night_loss * config.LAMBDA_IDENTITY
-                    + identity_day_loss * config.LAMBDA_IDENTITY
+                # + identity_night_loss * config.LAMBDA_IDENTITY
+                # + identity_day_loss * config.LAMBDA_IDENTITY
             )
 
         opt_gen.zero_grad()
@@ -140,25 +140,25 @@ def main():
 
     if config.LOAD_MODEL:
         load_checkpoint(
-            config.CHECKPOINT_GEN_NIGHT,
+            "gen_night_epoch_1.pth.tar",
             gen_night,
             opt_gen,
             config.LEARNING_RATE,
         )
         load_checkpoint(
-            config.CHECKPOINT_GEN_DAY,
+            "gen_day_epoch_1.pth.tar",
             gen_day,
             opt_gen,
             config.LEARNING_RATE,
         )
         load_checkpoint(
-            config.CHECKPOINT_DISC_NIGHT,
+            "disc_night_epoch_1.pth.tar",
             disc_night,
             opt_disc,
             config.LEARNING_RATE,
         )
         load_checkpoint(
-            config.CHECKPOINT_DISC_DAY,
+            "disc_day_epoch_1.pth.tar",
             disc_day,
             opt_disc,
             config.LEARNING_RATE,
@@ -202,7 +202,8 @@ def main():
     g_scaler = torch.cuda.amp.GradScaler()
     d_scaler = torch.cuda.amp.GradScaler()
 
-    for epoch in range(config.NUM_EPOCHS):
+    for epoch in range(2, config.NUM_EPOCHS):
+        print(f"Current Epoch : {epoch}")
         train_fn(
             disc_night,
             disc_day,
@@ -218,10 +219,10 @@ def main():
         )
 
         if config.SAVE_MODEL:
-            save_checkpoint(gen_night, opt_gen, filename=config.CHECKPOINT_GEN_NIGHT)
-            save_checkpoint(gen_day, opt_gen, filename=config.CHECKPOINT_GEN_DAY)
-            save_checkpoint(disc_night, opt_disc, filename=config.CHECKPOINT_DISC_NIGHT)
-            save_checkpoint(disc_day, opt_disc, filename=config.CHECKPOINT_DISC_DAY)
+            save_checkpoint(gen_night, opt_gen, filename=f"{config.CHECKPOINT_GEN_NIGHT}_epoch_{epoch}.pth.tar")
+            save_checkpoint(gen_day, opt_gen, filename=f"{config.CHECKPOINT_GEN_DAY}_epoch_{epoch}.pth.tar")
+            save_checkpoint(disc_night, opt_disc, filename=f"{config.CHECKPOINT_DISC_NIGHT}_epoch_{epoch}.pth.tar")
+            save_checkpoint(disc_day, opt_disc, filename=f"{config.CHECKPOINT_DISC_DAY}_epoch_{epoch}.pth.tar")
 
 
 if __name__ == "__main__":

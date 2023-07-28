@@ -13,13 +13,13 @@ LEARNING_RATE = 1e-5
 LAMBDA_IDENTITY = 0.0
 LAMBDA_CYCLE = 10
 NUM_WORKERS = 4
-NUM_EPOCHS = 10
+NUM_EPOCHS = 30
 LOAD_MODEL = False
 SAVE_MODEL = True
-CHECKPOINT_GEN_NIGHT = "gen_night.pth.tar"
-CHECKPOINT_GEN_DAY = "gen_day.pth.tar"
-CHECKPOINT_DISC_NIGHT = "disc_night.pth.tar"
-CHECKPOINT_DISC_DAY = "disc_day.pth.tar"
+CHECKPOINT_GEN_NIGHT = "gen_night"
+CHECKPOINT_GEN_DAY = "gen_day"
+CHECKPOINT_DISC_NIGHT = "disc_night"
+CHECKPOINT_DISC_DAY = "disc_day"
 
 transforms = A.Compose(
     [
