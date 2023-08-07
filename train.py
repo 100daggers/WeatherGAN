@@ -7,6 +7,8 @@ Programmed by Aladdin Persson <aladdin.persson at hotmail dot com>
 """
 from pathlib import Path
 
+import cv2
+import numpy as np
 import torch
 from dataset import DayNightDataset
 import sys
@@ -23,7 +25,7 @@ from utils.extract_BDD_images_list import get_list_of_images
 
 
 def train_fn(
-        disc_night, disc_day, gen_day, gen_night, loader, opt_disc, opt_gen, l1, mse, d_scaler, g_scaler
+        disc_night, disc_day, gen_day, gen_night, loader, opt_disc, opt_gen, l1, mse, d_scaler, g_scaler, epoch
 ):
     """
     Training loop to train all the gan models.
@@ -65,7 +67,7 @@ def train_fn(
             disc_day_fake_loss = mse(disc_day_fake, torch.zeros_like(disc_day_fake))
             disc_day_loss = disc_day_real_loss + disc_day_fake_loss
 
-            # put it togethor
+            # put it together
             total_disc_loss = (disc_night_loss + disc_day_loss) / 2
 
         opt_disc.zero_grad()
@@ -102,22 +104,42 @@ def train_fn(
                 # + identity_night_loss * config.LAMBDA_IDENTITY
                 # + identity_day_loss * config.LAMBDA_IDENTITY
             )
-
         opt_gen.zero_grad()
         g_scaler.scale(G_loss).backward()
         g_scaler.step(opt_gen)
         g_scaler.update()
 
-        if idx % 200 == 0:
-            save_image(fake_night * 0.5 + 0.5, f"saved_images/night_{idx}.png")
-            save_image(fake_day * 0.5 + 0.5, f"saved_images/day_{idx}.png")
+        if idx % 220 == 0:
+            save_samples(real_day=day.detach().cpu() * 0.5 + 0.5, real_night=night.detach().cpu() * 0.5 + 0.5,
+                         fake_day=fake_day.detach().cpu() * 0.5 + 0.5,
+                         fake_night=fake_night.detach().cpu() * 0.5 + 0.5, idx=idx, epoch=epoch)
+            # save_image(fake_night * 0.5 + 0.5, f"saved_images/night_{idx}.png")
+            # save_image(fake_day * 0.5 + 0.5, f"saved_images_without_identity/day_{idx}.png")
 
         loop.set_postfix(night_real=night_reals / (idx + 1), night_fake=night_fakes / (idx + 1))
+
+
+def save_samples(real_day: torch.Tensor, fake_day: torch.Tensor, real_night: torch.Tensor, fake_night: torch.Tensor,
+                 idx: int, epoch: int) -> None:
+    """
+    concatenates the real and fake images horizontally and saves them in the input directory.
+    :param idx:
+    :param epoch:
+    :param real_day:
+    :param fake_day:
+    :param real_night:
+    :param fake_night:
+    """
+    real_and_fake_day = torch.cat((real_day[0], fake_night[0]), dim=2)
+    real_and_fake_night = torch.cat((real_night[0], fake_day[0]), dim=2)
+    save_image(real_and_fake_day, f"saved_images_without_identity/{epoch}_epoch_day_{idx}.png")
+    save_image(real_and_fake_night, f"saved_images_without_identity/{epoch}_epoch_night_{idx}.png")
 
 
 def main():
     """
     main function to run the script.
+    
     """
     disc_night = Discriminator(in_channels=3).to(config.DEVICE)
     disc_day = Discriminator(in_channels=3).to(config.DEVICE)
@@ -140,25 +162,24 @@ def main():
 
     if config.LOAD_MODEL:
         load_checkpoint(
-            "gen_night_epoch_1.pth.tar",
             gen_night,
             opt_gen,
             config.LEARNING_RATE,
         )
         load_checkpoint(
-            "gen_day_epoch_1.pth.tar",
+            "gen_day_with_identity_epoch_46.pth.tar",
             gen_day,
             opt_gen,
             config.LEARNING_RATE,
         )
         load_checkpoint(
-            "disc_night_epoch_1.pth.tar",
+            "disc_night_with_identity_epoch_46.pth.tar",
             disc_night,
             opt_disc,
             config.LEARNING_RATE,
         )
         load_checkpoint(
-            "disc_day_epoch_1.pth.tar",
+            "disc_day_with_identity_epoch_46.pth.tar",
             disc_day,
             opt_disc,
             config.LEARNING_RATE,
@@ -169,20 +190,20 @@ def main():
                                                   json_labels_file_path=train_labels_path)
     list_of_night_images_train = get_list_of_images(weather_type="clear", timeofday="night",
                                                     json_labels_file_path=train_labels_path)
-    list_of_day_images_val = get_list_of_images(weather_type="clear", timeofday="day",
+    list_of_day_images_val = get_list_of_images(weather_type="clear", timeofday="daytime",
                                                 json_labels_file_path=val_labels_path)
     list_of_night_images_val = get_list_of_images(weather_type="clear", timeofday="night",
                                                   json_labels_file_path=val_labels_path)
 
     train_dataset = DayNightDataset(
         images_dir=config.IMAGES_DIR,
-        transform=config.transforms,
+        transform=config.train_transforms,
         list_of_day_images=list_of_day_images_train,
         list_of_night_images=list_of_night_images_train
     )
     val_dataset = DayNightDataset(
         images_dir=config.IMAGES_DIR,
-        transform=config.transforms,
+        transform=config.train_transforms,
         list_of_day_images=list_of_day_images_val,
         list_of_night_images=list_of_night_images_val
     )
@@ -202,7 +223,7 @@ def main():
     g_scaler = torch.cuda.amp.GradScaler()
     d_scaler = torch.cuda.amp.GradScaler()
 
-    for epoch in range(2, config.NUM_EPOCHS):
+    for epoch in range(47, config.NUM_EPOCHS):
         print(f"Current Epoch : {epoch}")
         train_fn(
             disc_night,
@@ -216,6 +237,7 @@ def main():
             mse,
             d_scaler,
             g_scaler,
+            epoch
         )
 
         if config.SAVE_MODEL:
